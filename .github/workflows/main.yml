@@ -1,0 +1,49 @@
+name: Deploy Synapse and Notebook
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Authenticate with Azure CLI
+    - name: Authenticate with Azure CLI
+      run: az login --use-device-code
+
+    # Step 3: Set up Terraform
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    # Step 4: Initialize Terraform
+    - name: Terraform Init
+      run: terraform init
+
+    # Step 5: Terraform Plan
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+
+    # Step 6: Terraform Apply
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
+
+    # Step 7: Deploy Notebook to Synapse
+    - name: Upload Notebook to Synapse
+      run: |
+        WORKSPACE_NAME=$(terraform output -raw synapse_workspace_name)
+        SPARK_POOL_NAME=$(terraform output -raw spark_pool_name)
+        az synapse notebook import \
+          --workspace-name $WORKSPACE_NAME \
+          --name my-notebook \
+          --file ADB/EDA_MolecularBindAI.ipynb \
+          --spark-pool-name $SPARK_POOL_NAME
+
