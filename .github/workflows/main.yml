@@ -16,7 +16,9 @@ jobs:
 
     # Step 2: Authenticate with Azure CLI
     - name: Authenticate with Azure CLI
-      run: az login --use-device-code
+      run: |
+        az login --use-device-code
+        az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     # Step 3: Set up Terraform
     - name: Set up Terraform
