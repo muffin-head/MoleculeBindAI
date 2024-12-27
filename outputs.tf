@@ -19,14 +19,7 @@ output "bronze_container_url" {
   value = azurerm_storage_container.bronze.id
   description = "Resource ID of the Bronze container"
 }
-output "silver_container_url" {
-  value = azurerm_storage_container.silver.id
-  description = "Resource ID of the Silver container"
-}
-output "gold_container_url" {
-  value = azurerm_storage_container.gold.id
-  description = "Resource ID of the Gold container"
-}
+
 # Output for Synapse Workspace
 output "synapse_workspace_name" {
   value = azurerm_synapse_workspace.workspace.name
