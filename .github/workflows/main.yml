@@ -1,68 +1,52 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.0"
-    }
-  }
-  required_version = ">= 1.0.0"
-}
+name: Deploy Synapse and Notebook
 
-provider "azurerm" {
-  features {}
-}
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-# Resource Group
-resource "azurerm_resource_group" "rg" {
-  name     = "moleculebindai-rg"
-  location = var.location
-}
+jobs:
+  deploy-synapse:
+    name: Deploy Synapse and Notebook
+    runs-on: ubuntu-latest
 
-# Storage Account (ADLS Gen2)
-resource "azurerm_storage_account" "datalake" {
-  name                     = "moleculebindaidatalake"
-  resource_group_name      = azurerm_resource_group.rg.name
-  location                 = azurerm_resource_group.rg.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-  is_hns_enabled           = true
-  tags = {
-    environment = "dev"
-  }
-}
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-# Storage Container
-resource "azurerm_storage_container" "bronze" {
-  name                  = "bronze"
-  storage_account_id    = azurerm_storage_account.datalake.id
-  container_access_type = "private"
-}
+      # Step 2: Authenticate with Azure CLI
+      - name: Authenticate with Azure CLI
+        run: |
+          az login --use-device-code
+          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-# Synapse Workspace
-resource "azurerm_synapse_workspace" "workspace" {
-  name                             = "synapse-workspace"
-  resource_group_name              = azurerm_resource_group.rg.name
-  location                         = azurerm_resource_group.rg.location
-  storage_data_lake_gen2_filesystem_id = azurerm_storage_account.datalake.id
-  sql_administrator_login          = "adminuser"
-  sql_administrator_login_password = "SecurePassword123!"
+      # Step 3: Set up Terraform
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
 
-  tags = {
-    environment = "dev"
-  }
-}
+      # Step 4: Terraform Init
+      - name: Terraform Init
+        run: terraform init
 
-# Synapse Spark Pool
-resource "azurerm_synapse_spark_pool" "spark_pool" {
-  name                 = "sparkpool01"
-  synapse_workspace_id = azurerm_synapse_workspace.workspace.id
+      # Step 5: Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
 
-  spark_version    = "3.3"
-  node_size        = "Small"
-  node_size_family = "MemoryOptimized"
-  node_count       = 3
+      # Step 6: Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
 
-  tags = {
-    environment = "dev"
-  }
-}
+      # Step 7: Deploy Notebook to Synapse
+      - name: Upload Notebook to Synapse
+        run: |
+          WORKSPACE_NAME=$(terraform output -raw synapse_workspace_name)
+          SPARK_POOL_NAME=$(terraform output -raw spark_pool_name)
+          az synapse notebook import \
+            --workspace-name $WORKSPACE_NAME \
+            --name my-notebook \
+            --file ADB/EDA_MolecularBindAI.ipynb \
+            --spark-pool-name $SPARK_POOL_NAME
