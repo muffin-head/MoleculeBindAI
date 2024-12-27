@@ -26,12 +26,16 @@ resource "azurerm_storage_container" "bronze" {
 
 # Synapse Workspace
 resource "azurerm_synapse_workspace" "workspace" {
-  name                             = "synapse-workspace"
+  name                             = "synapse-workspace-moleculebindai"  # Ensure uniqueness
   resource_group_name              = azurerm_resource_group.rg.name
-  location                         = azurerm_resource_group.rg.location
-  storage_data_lake_gen2_filesystem_id = azurerm_storage_account.datalake.id
+  location                         = "westus"  # Updated region to a supported location
+  storage_data_lake_gen2_filesystem_id = "https://${azurerm_storage_account.datalake.name}.dfs.core.windows.net/bronze"  # Corrected URL format
   sql_administrator_login          = "adminuser"
   sql_administrator_login_password = "SecurePassword123!"
+
+  identity {
+    type = "SystemAssigned"  # Added required SystemAssigned identity
+  }
 
   tags = {
     environment = "dev"
@@ -52,4 +56,3 @@ resource "azurerm_synapse_spark_pool" "spark_pool" {
     environment = "dev"
   }
 }
-
