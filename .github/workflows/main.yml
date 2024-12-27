@@ -46,7 +46,7 @@ jobs:
           WORKSPACE_NAME=$(terraform output -raw synapse_workspace_name)
           SPARK_POOL_NAME=$(terraform output -raw spark_pool_name)
           az synapse notebook import \
-            --workspace-name $WORKSPACE_NAME \
-            --name my-notebook \
-            --file ADB/EDA_MolecularBindAI.ipynb \
-            --spark-pool-name $SPARK_POOL_NAME
+            --workspace-name "$WORKSPACE_NAME" \
+            --name "my-notebook" \
+            --file "ADB/EDA_MolecularBindAI.ipynb" \
+            --spark-pool-name "$SPARK_POOL_NAME"
